@@ -34,17 +34,23 @@ namespace Excel
             // Ensure that the textboxes are not blank.
             if ((string.IsNullOrEmpty(this.Path.Text)))
             {
-                MessageBox.Show("Please select the file path.");
+                MessageBox.Show("Please specify the excel file path.");
+                return;
+            }
+
+            if ((string.IsNullOrEmpty(this.ConnectionsPath.Text)))
+            {
+                MessageBox.Show("Please specify the path to the connections.xml file.");
                 return;
             }
 
             if ((string.IsNullOrEmpty(this.Location.Text)))
             {
-                MessageBox.Show("Please specify the location of the external data.");
+                MessageBox.Show("Please specify the new location of the odc file.");
                 return;
             }
 
-            if ((!string.IsNullOrEmpty(this.Path.Text) | !string.IsNullOrEmpty(this.Location.Text)))
+            if ((!string.IsNullOrEmpty(this.Path.Text) | !string.IsNullOrEmpty(this.ConnectionsPath.Text) | !string.IsNullOrEmpty(this.Location.Text)))
             {
                 strSourceFile = this.Path.Text;
                 UpdateConnectPath(strSourceFile);
@@ -53,8 +59,8 @@ namespace Excel
 
         private void UpdateConnectPath(string strSourceFile)
         {
-            
-            string path = "connections.xml";
+
+            string path = this.ConnectionsPath.Text;
             var xDoc = XDocument.Load(path);
             var ns = XNamespace.Get("http://schemas.openxmlformats.org/spreadsheetml/2006/main");
 
@@ -89,6 +95,7 @@ namespace Excel
                 wkb.Close();
                 MessageBox.Show("Operation Complete");
                 System.Windows.Forms.Application.Exit();
+
             }
 
 	}
