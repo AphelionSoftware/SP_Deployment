@@ -38,13 +38,13 @@ namespace Excel
                 return;
             }
 
-            if ((string.IsNullOrEmpty(this.oldLocation.Text) | string.IsNullOrEmpty(this.Location.Text)))
+            if ((string.IsNullOrEmpty(this.Location.Text)))
             {
                 MessageBox.Show("Please specify the location of the external data.");
                 return;
             }
 
-            if ((!string.IsNullOrEmpty(this.Path.Text) | !string.IsNullOrEmpty(this.oldLocation.Text) | !string.IsNullOrEmpty(this.Location.Text)))
+            if ((!string.IsNullOrEmpty(this.Path.Text) | !string.IsNullOrEmpty(this.Location.Text)))
             {
                 strSourceFile = this.Path.Text;
                 UpdateConnectPath(strSourceFile);
@@ -54,41 +54,42 @@ namespace Excel
         private void UpdateConnectPath(string strSourceFile)
         {
             
-            XmlNode oxmlNode = null;
+            string path = "connections.xml";
+            var xDoc = XDocument.Load(path);
+            var ns = XNamespace.Get("http://schemas.openxmlformats.org/spreadsheetml/2006/main");
+
+            var odcFile = xDoc.Root.Elements(ns + "connection")
+                                   .FirstOrDefault(x => (int)x.Attribute("id") == 1)
+                                   .Attribute("odcFile");
+
+            odcFile.Value = this.Location.Text;
+
+            xDoc.Save(path);
             
-            try
+            //open the document
+            using (SpreadsheetDocument wkb = SpreadsheetDocument.Open(strSourceFile, true))
             {
-                // Open the workbook.
-                SpreadsheetDocument wkb = SpreadsheetDocument.Open(strSourceFile, true);
+                //remove the current xlsx Connection part
+                wkb.WorkbookPart.DeletePart(wkb.WorkbookPart.ConnectionsPart);
+                ConnectionsPart newPart = wkb.WorkbookPart.AddNewPart<ConnectionsPart>();
 
-                // Manage namespaces to perform Xml XPath queries.
-                NameTable nt = new NameTable();
-                XmlNamespaceManager nsManager = new XmlNamespaceManager(nt);
-                nsManager.AddNamespace("sh", spreadsheetmlNamespace);
+                //using the new XML snippet
+                using (StreamReader read = new StreamReader(path))
+                {
+                    string contents = read.ReadToEnd();
 
-                // Get the connections part from the package.
-                XmlDocument xdoc = new XmlDocument(nt);
+                    //commit the new part to the spreadsheet
+                    using (StreamWriter write = new StreamWriter(newPart.GetStream(FileMode.Create)))
+                    {
+                        write.Write(contents);
+                    }
+                }
                 
-                // Load the XML in the part into an XmlDocument instance.
-                xdoc.Load(wkb.WorkbookPart.ConnectionsPart.GetStream());
-
-                // Find the odcFile attribute.
-                oxmlNode = xdoc.SelectSingleNode("/sh:connections/sh:connection/@odcFile", nsManager);
-
-                // Replace the old path with the new path.
-                oxmlNode.Value = Strings.Replace(oxmlNode.Value, this.oldLocation.Text, this.Location.Text);
-                xdoc.Save(wkb.WorkbookPart.ConnectionsPart.GetStream());
-                               
                 // Close workbook and exit.
                 wkb.Close();
                 MessageBox.Show("Operation Complete");
                 System.Windows.Forms.Application.Exit();
-               
-		} 
-        catch 
-        {
-			// Some files have no external connections so ignore any errors.
-		}
+            }
 
 	}
   }
